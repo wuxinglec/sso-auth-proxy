@@ -16,3 +16,9 @@ export SSO_REDIRECT_URI="/app/#/console/project/%s/dashboard"
 export SSO_PROXY_PREFIX="/sso/abc"
 ./sso-proxy
 ```
+
+## TODO
+
+* set flags by command line arguments
+* uri whitelist support.
+* ...
