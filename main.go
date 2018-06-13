@@ -9,7 +9,7 @@ import (
 )
 
 func ssoHandler(w http.ResponseWriter, r *http.Request) {
-	// clog.Debug("from", r.RemoteAddr, r.Method, r.URL.RequestURI(), r.Proto)
+	clog.Debug("from", r.RemoteAddr, r.Method, r.URL.RequestURI(), r.Proto)
 	ssoproxy.ServeHTTP(w, r)
 }
 
@@ -47,7 +47,7 @@ func main() {
 	http.HandleFunc("/", ssoHandler)
 	http.HandleFunc("/debug", debugSwitch)
 	_ = router
-	clog.Debug("listening on port 9090 ...")
+	clog.Info("listening on port 9090 ...")
 	clog.Fatal(http.ListenAndServe(":9090", nil))
 }
 
