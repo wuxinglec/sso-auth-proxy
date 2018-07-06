@@ -169,7 +169,15 @@ func (p *SsoProxy) AuthOnly(rw http.ResponseWriter, req *http.Request) {
 			p.SaveSession(rw, req, session)
 
 			// redirectURI := fmt.Sprintf(p.redirectURI, user.UserInfo.UserAccount)
-			redirectURI := strings.Replace(p.redirectURI, "%s", user.UserInfo.UserAccount, -1)
+
+			var redirectURI string
+			refer := req.FormValue("refer")
+			if len(refer) > 0 {
+				redirectURI = strings.Replace(refer, "%s", user.UserInfo.UserAccount, -1)
+				redirectURI = "/#" + redirectURI
+			} else {
+				redirectURI = strings.Replace(p.redirectURI, "%s", user.UserInfo.UserAccount, -1)
+			}
 			http.Redirect(rw, req, redirectURI, 302)
 		}
 	} else {
@@ -406,7 +414,7 @@ func (p *SsoProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int {
 	}
 
 	// clog.Debugf("saveSession: %v, clearSession: %v, revalidated: %v", saveSession, clearSession, revalidated)
-
+	clog.Debug("user:", session.User)
 	req.Header["X-Forwarded-User"] = []string{session.User}
 	if session.Email != "" {
 		req.Header["X-Forwarded-Email"] = []string{session.Email}
@@ -447,8 +455,13 @@ func (p *SsoProxy) SsoStart(rw http.ResponseWriter, req *http.Request) {
 	tls := map[bool]string{false: "http://", true: "https://"}
 
 	// clog.Warn("goto", tls[req.TLS != nil], req.Host)
-
 	authURL := loginBaseURL + tls[req.TLS != nil] + req.Host + p.AuthOnlyPath
+
+	req.ParseForm()
+	refer := req.FormValue("refer")
+	if len(refer) > 0 {
+		authURL += "%3frefer=" + refer
+	}
 
 	clog.Debug("authURL", authURL)
 	http.Redirect(rw, req, authURL, 302)
