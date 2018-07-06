@@ -34,6 +34,10 @@ func NewUpstreamProxy(target string) *UpstreamProxy {
 		// req.Header.Add("Host", upstream.Host)
 		req.URL.Scheme = upstream.Scheme
 		req.URL.Host = upstream.Host
+		// In golang, we can't modify the 'HOST' http header by setting req.Header["Host"],
+		// and req.Host with the same effect as req.Header["Host"]
+		// see https://github.com/golang/go/issues/7682
+		req.Host = upstream.Host
 		req.URL.Path = singleJoiningSlash(upstream.Path, req.URL.Path)
 		if upstreamQuery == "" || req.URL.RawQuery == "" {
 			req.URL.RawQuery = upstreamQuery + req.URL.RawQuery

@@ -60,6 +60,7 @@ func NewSingleHostWsReverseProxy(target *url.URL) *wsReverseProxy {
 	director := func(req *http.Request) {
 		req.URL.Scheme = target.Scheme
 		req.URL.Host = target.Host
+		req.Host = target.Host
 		req.URL.Path = singleJoiningSlash(target.Path, req.URL.Path)
 		if targetQuery == "" || req.URL.RawQuery == "" {
 			req.URL.RawQuery = targetQuery + req.URL.RawQuery
