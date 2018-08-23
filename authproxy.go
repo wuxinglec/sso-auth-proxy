@@ -165,7 +165,8 @@ func (p *SsoProxy) AuthOnly(rw http.ResponseWriter, req *http.Request) {
 		} else {
 			clog.Infof("user '%v' logged in, email: %v", user.UserInfo.UserID, user.UserInfo.Email)
 
-			session := &SessionState{User: user.UserInfo.UserID, Email: user.UserInfo.Email}
+			// DO NOT add email, otherwise decoding session will get invalid userID.
+			session := &SessionState{User: user.UserInfo.UserID}
 			p.SaveSession(rw, req, session)
 
 			// redirectURI := fmt.Sprintf(p.redirectURI, user.UserInfo.UserAccount)
@@ -265,7 +266,7 @@ type userinfo struct {
 	Status        string `json:"status"`
 	Phone         string `json:"phoneNum"`
 	JobTitle      string `json:"jobTitle"`
-	StatCode      string `statCode`
+	StatCode      string `json:"statCode"`
 	RootTicket    string `json:"rootTicket"`
 	Email         string `json:"email"`
 	RegionCode    string `json:"regionCode"`
@@ -456,6 +457,7 @@ func (p *SsoProxy) LoadCookiedSession(req *http.Request) (*SessionState, time.Du
 
 // SessionFromCookie deserializes a session from a cookie value
 func (p *SsoProxy) SessionFromCookie(v string, c *cookie.Cipher) (s *SessionState, err error) {
+	clog.Debug("session: %v", v)
 	return DecodeSessionState(v, c)
 }
 
