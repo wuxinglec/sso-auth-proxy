@@ -130,7 +130,7 @@ func NewSsoProxy(upstream string) *SsoProxy {
 		redirectURI:   rediredcturi,
 		CookieName:    "_datafoundry_sso_session",
 		CookieSeed:    "D474F0undrys4n",
-		CookieExpire:  time.Minute * 30,
+		CookieExpire:  time.Minute * 60 * 24,
 		CookieCipher:  cipher,
 		CookieRefresh: time.Duration(0),
 		Validator:     func(string) bool { return true },
@@ -163,9 +163,9 @@ func (p *SsoProxy) AuthOnly(rw http.ResponseWriter, req *http.Request) {
 			clog.Error(err)
 			p.ErrorPage(rw, http.StatusUnauthorized, err.Error())
 		} else {
-			clog.Infof("user '%v' logged in.", user.UserInfo.UserAccount)
+			clog.Infof("user '%v' logged in, email: %v", user.UserInfo.UserID, user.UserInfo.Email)
 
-			session := &SessionState{User: user.UserInfo.UserAccount}
+			session := &SessionState{User: user.UserInfo.UserID, Email: user.UserInfo.Email}
 			p.SaveSession(rw, req, session)
 
 			// redirectURI := fmt.Sprintf(p.redirectURI, user.UserInfo.UserAccount)
@@ -255,20 +255,29 @@ func (p *SsoProxy) makeCookie(req *http.Request, name string, value string, expi
 }
 
 type userinfo struct {
-	Username    string `json:"user_name"`
-	UserAccount string `json:"user_account"`
-	LoginTime   string `json:"login_time"`
-	Token       string `json:"token"`
-	Status      string `json:"status"`
-	Phone       string `json:"phone_num"`
-	JobTitle    string `json:"job_title"`
-	UserID      string `json:"user_id"`
-	StatCode    string `state_code`
+	UserID        string `json:"userId"`
+	Username      string `json:"userName"`
+	UserAccount   string `json:"userAccount"`
+	LoginTime     string `json:"loginTime"`
+	AccountType   string `json:"accountType"`
+	EmployeNum    string `json:"employeNum"`
+	Token         string `json:"token"`
+	Status        string `json:"status"`
+	Phone         string `json:"phoneNum"`
+	JobTitle      string `json:"jobTitle"`
+	StatCode      string `statCode`
+	RootTicket    string `json:"rootTicket"`
+	Email         string `json:"email"`
+	RegionCode    string `json:"regionCode"`
+	RegionName    string `json:"regionName"`
+	IsAdmin       string `json:"isAdmin"`
+	EffectiveTime string `json:"effectiveTime"`
+	ExpireTime    string `json:"expireTime"`
 }
+
 type User struct {
 	Result    string   `json:"result"`
 	ResultMsg string   `json:"returnMsg"`
-	UserID    string   `json:"userId"`
 	UserInfo  userinfo `json:"userInfo"`
 }
 
@@ -279,7 +288,8 @@ func (p *SsoProxy) Redeem(token string) (u *User, err error) {
 		return
 	}
 
-	// redeemURL := "http://10.1.235.171:12005/dmc/ssoAuth?token=" + token
+	// old redeemURL := "http://10.1.235.171:12005/dmc/ssoAuth?token=" + token
+	// http://192.168.11.136:12001/sptl-sso/api/sso/checkToken?token=
 	redeemURL := redeemBaseURL + token
 	clog.Debug(redeemURL)
 	var req *http.Request
