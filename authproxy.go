@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -22,6 +22,8 @@ type UpstreamProxy struct {
 	handler   http.Handler
 	wsHandler http.Handler
 }
+
+const CookieSecret = "D474F0undrys4ndead"
 
 func NewUpstreamProxy(target string) *UpstreamProxy {
 	upstream, _ := url.Parse(target)
@@ -85,6 +87,7 @@ func (u *UpstreamProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type SsoProxy struct {
 	serveMux      http.Handler
 	SsoStartPath  string
+	SignOutPath   string
 	AuthOnlyPath  string
 	redirectURI   string
 	CookieName    string
@@ -103,33 +106,36 @@ func NewSsoProxy(upstream string) *SsoProxy {
 
 	var cipher *cookie.Cipher
 	// if opts.PassAccessToken || (opts.CookieRefresh != time.Duration(0)) {
-	// 	var err error
-	// 	cipher, err = cookie.NewCipher(secretBytes(opts.CookieSecret))
-	// 	if err != nil {
-	// 		log.Fatal("cookie-secret error: ", err)
-	// 	}
+	var err error
+	cipher, err = cookie.NewCipher(secretBytes(CookieSecret))
+	if err != nil {
+		log.Fatal("cookie-secret error: ", err)
+	}
 	// }
 
-	rediredcturi := os.Getenv("SSO_REDIRECT_URI")
-	if len(rediredcturi) == 0 {
-		rediredcturi = "/"
-	}
-	clog.Info("using", rediredcturi, "as redirect uri path.")
+	// rediredcturi := os.Getenv("SSO_REDIRECT_URI")
+	// if len(rediredcturi) == 0 {
+	// 	rediredcturi = "/"
+	// }
+	// clog.Info("using", rediredcturi, "as redirect uri path.")
 
-	proxyPrefix := os.Getenv("SSO_PROXY_PREFIX")
-	if len(proxyPrefix) == 0 {
-		proxyPrefix = "/sso"
-	}
-	clog.Info("using", proxyPrefix, "as proxy url prefix.")
+	// proxyPrefix := os.Getenv("SSO_PROXY_PREFIX")
+	// if len(proxyPrefix) == 0 {
+	// 	proxyPrefix = "/sso"
+	// }
+	// clog.Info("using", proxyPrefix, "as proxy url prefix.")
+	rediredcturi := envOrDefault("SSO_REDIRECT_URI", "/")
+	proxyPrefix := envOrDefault("SSO_PROXY_PREFIX", "/sso")
 
 	return &SsoProxy{
 		serveMux:     serveMux,
 		SsoStartPath: fmt.Sprintf("%s/ssostart", proxyPrefix),
 		AuthOnlyPath: fmt.Sprintf("%s/auth", proxyPrefix),
+		SignOutPath:  fmt.Sprintf("%s/logout", proxyPrefix),
 		// redirectURI:   "/app/#/console/project/%s/dashboard",
 		redirectURI:   rediredcturi,
 		CookieName:    "_datafoundry_sso_session",
-		CookieSeed:    "D474F0undrys4n",
+		CookieSeed:    CookieSecret,
 		CookieExpire:  time.Minute * 60 * 24,
 		CookieCipher:  cipher,
 		CookieRefresh: time.Duration(0),
@@ -144,11 +150,71 @@ func (p *SsoProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		p.SsoStart(rw, req)
 	case path == p.AuthOnlyPath:
 		p.AuthOnly(rw, req)
+	case path == p.SignOutPath:
+		p.SignOut(rw, req)
 	case p.IsWhitelistedRequest(req):
 		p.serveMux.ServeHTTP(rw, req)
 	default:
 		p.Proxy(rw, req)
 	}
+}
+
+func (p *SsoProxy) SignOut(rw http.ResponseWriter, req *http.Request) {
+	remoteAddr := getRemoteAddr(req)
+	session, sessionAge, err := p.LoadCookiedSession(req)
+	_ = sessionAge
+	if err != nil && err != http.ErrNoCookie {
+		clog.Warnf("%s %s", remoteAddr, err)
+	} else {
+		p.LogoutRemote(session)
+		clog.Debugf("user '%v' logged out.", session.User)
+	}
+	p.ClearSessionCookie(rw, req)
+	http.Redirect(rw, req, logoutRedirectURL, 302)
+}
+
+func (p *SsoProxy) LogoutRemote(session *SessionState) (err error) {
+	clog.Warnf("session: %v", session)
+
+	if session.AccessToken == "" {
+		err = errors.New("missing token")
+		clog.Warn("missing token.")
+		return
+	}
+
+	// http://192.168.11.136:12001/sptl-sso/sso/logout?token=
+	logoutURL := logoutBaseURL + session.AccessToken
+	clog.Debug(logoutURL)
+	var req *http.Request
+	req, err = http.NewRequest("GET", logoutURL, nil)
+
+	if err != nil {
+		return err
+	}
+
+	transCfg := &http.Transport{
+		DisableKeepAlives: true,
+		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{
+		Transport: transCfg,
+		// Timeout:   timeout,
+	}
+
+	var resp *http.Response
+	resp, err = client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	var body []byte
+	body, err = ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+
+	clog.Debug(resp.StatusCode, string(body))
+
+	return err
+
 }
 
 func (p *SsoProxy) AuthOnly(rw http.ResponseWriter, req *http.Request) {
@@ -163,10 +229,10 @@ func (p *SsoProxy) AuthOnly(rw http.ResponseWriter, req *http.Request) {
 			clog.Error(err)
 			p.ErrorPage(rw, http.StatusUnauthorized, err.Error())
 		} else {
-			clog.Infof("user '%v' logged in, email: %v", user.UserInfo.UserID, user.UserInfo.Email)
+			clog.Infof("user '%v' logged in, email: %v, token: %v", user.UserInfo.UserID, user.UserInfo.Email, user.UserInfo.Token)
 
 			// DO NOT add email, otherwise decoding session will get invalid userID.
-			session := &SessionState{User: user.UserInfo.UserID}
+			session := &SessionState{User: user.UserInfo.UserID, AccessToken: user.UserInfo.Token}
 			p.SaveSession(rw, req, session)
 
 			// redirectURI := fmt.Sprintf(p.redirectURI, user.UserInfo.UserAccount)
@@ -203,6 +269,7 @@ func (p *SsoProxy) IsWhitelistedPath(path string) (ok bool) {
 }
 
 func (p *SsoProxy) SaveSession(rw http.ResponseWriter, req *http.Request, s *SessionState) error {
+	clog.Debugf("session: %#v", s)
 	value, err := p.CookieForSession(s, p.CookieCipher)
 	if err != nil {
 		return err
@@ -457,7 +524,7 @@ func (p *SsoProxy) LoadCookiedSession(req *http.Request) (*SessionState, time.Du
 
 // SessionFromCookie deserializes a session from a cookie value
 func (p *SsoProxy) SessionFromCookie(v string, c *cookie.Cipher) (s *SessionState, err error) {
-	clog.Debug("session: %v", v)
+	clog.Debugf("session: %v", v)
 	return DecodeSessionState(v, c)
 }
 

@@ -29,7 +29,7 @@ func debugSwitch(w http.ResponseWriter, r *http.Request) {
 }
 
 var ssoproxy *SsoProxy
-var loginBaseURL, redeemBaseURL string
+var loginBaseURL, logoutBaseURL, redeemBaseURL, logoutRedirectURL string
 
 func main() {
 
@@ -54,9 +54,11 @@ func main() {
 func init() {
 	clog.Info("starting sso-proxy, VERSION:", Version)
 
-	redeemBaseURL = makeAddrFromEnv("SSO_REDEEM_BASE_URL")
 	loginBaseURL = makeAddrFromEnv("SSO_LOGIN_BASE_URL")
+	logoutBaseURL = makeAddrFromEnv("SSO_LOGOUT_BASE_URL")
+	redeemBaseURL = makeAddrFromEnv("SSO_REDEEM_BASE_URL")
 	upstream := makeAddrFromEnv("SSO_UPSTREAM_URL")
+	logoutRedirectURL = envOrDefault("SSO_LOGOUT_REDIRECT_URL", "/")
 	ssoproxy = NewSsoProxy(upstream)
 
 	clog.SetLogLevel(clog.LOG_LEVEL_INFO)
