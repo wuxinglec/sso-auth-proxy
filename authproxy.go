@@ -165,9 +165,11 @@ func (p *SsoProxy) SignOut(rw http.ResponseWriter, req *http.Request) {
 	_ = sessionAge
 	if err != nil && err != http.ErrNoCookie {
 		clog.Warnf("%s %s", remoteAddr, err)
-	} else {
+	} else if session != nil {
 		p.LogoutRemote(session)
 		clog.Debugf("user '%v' logged out.", session.User)
+	} else {
+		clog.Debug("empty session.")
 	}
 	p.ClearSessionCookie(rw, req)
 	http.Redirect(rw, req, logoutRedirectURL, 302)

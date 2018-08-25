@@ -47,8 +47,11 @@ func main() {
 	http.HandleFunc("/", ssoHandler)
 	http.HandleFunc("/debug", debugSwitch)
 	_ = router
-	clog.Info("listening on port 9090 ...")
-	clog.Fatal(http.ListenAndServe(":9090", nil))
+
+	port := envOrDefault("SERVE_PORT", "9090")
+
+	clog.Info("listening on port", port)
+	clog.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 func init() {
