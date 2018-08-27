@@ -89,6 +89,7 @@ type SsoProxy struct {
 	SsoStartPath  string
 	SignOutPath   string
 	AuthOnlyPath  string
+	SignoutCBPath string
 	redirectURI   string
 	CookieName    string
 	CookieSeed    string
@@ -128,10 +129,11 @@ func NewSsoProxy(upstream string) *SsoProxy {
 	proxyPrefix := envOrDefault("SSO_PROXY_PREFIX", "/sso")
 
 	return &SsoProxy{
-		serveMux:     serveMux,
-		SsoStartPath: fmt.Sprintf("%s/ssostart", proxyPrefix),
-		AuthOnlyPath: fmt.Sprintf("%s/auth", proxyPrefix),
-		SignOutPath:  fmt.Sprintf("%s/logout", proxyPrefix),
+		serveMux:      serveMux,
+		SsoStartPath:  fmt.Sprintf("%s/ssostart", proxyPrefix),
+		AuthOnlyPath:  fmt.Sprintf("%s/auth", proxyPrefix),
+		SignOutPath:   fmt.Sprintf("%s/logout", proxyPrefix),
+		SignoutCBPath: fmt.Sprintf("%s/signout_callback", proxyPrefix),
 		// redirectURI:   "/app/#/console/project/%s/dashboard",
 		redirectURI:   rediredcturi,
 		CookieName:    "_datafoundry_sso_session",
