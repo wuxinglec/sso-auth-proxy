@@ -30,6 +30,7 @@ func debugSwitch(w http.ResponseWriter, r *http.Request) {
 
 var ssoproxy *SsoProxy
 var loginBaseURL, logoutBaseURL, redeemBaseURL, logoutRedirectURL string
+var lqMgr LogoutQueueManager
 
 func main() {
 
@@ -66,4 +67,5 @@ func init() {
 
 	clog.SetLogLevel(clog.LOG_LEVEL_INFO)
 	clog.Info("Upstream target:", upstream)
+	lqMgr = NewLogoutQueue()
 }

@@ -154,11 +154,26 @@ func (p *SsoProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		p.AuthOnly(rw, req)
 	case path == p.SignOutPath:
 		p.SignOut(rw, req)
+	case path == p.SignoutCBPath:
+		p.SignOutCallback(rw, req)
 	case p.IsWhitelistedRequest(req):
 		p.serveMux.ServeHTTP(rw, req)
 	default:
 		p.Proxy(rw, req)
 	}
+}
+
+func (p *SsoProxy) SignOutCallback(rw http.ResponseWriter, req *http.Request) {
+	req.ParseForm()
+	token := req.FormValue("token")
+	if token != "" {
+		clog.Info("token accepted.", token)
+		if err := lqMgr.Add(token); err != nil {
+			clog.Error("adding token to queue error.", err)
+		}
+	}
+	rw.WriteHeader(http.StatusOK)
+	rw.Write([]byte("OK"))
 }
 
 func (p *SsoProxy) SignOut(rw http.ResponseWriter, req *http.Request) {
@@ -169,6 +184,7 @@ func (p *SsoProxy) SignOut(rw http.ResponseWriter, req *http.Request) {
 		clog.Warnf("%s %s", remoteAddr, err)
 	} else if session != nil {
 		p.LogoutRemote(session)
+		lqMgr.Remove(session.AccessToken)
 		clog.Debugf("user '%v' logged out.", session.User)
 	} else {
 		clog.Debug("empty session.")
@@ -487,8 +503,19 @@ func (p *SsoProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int {
 		}
 	}
 
+	if session != nil {
+		if ok := lqMgr.IsExist(session.AccessToken); ok {
+			clog.Infof("user %v should logout since token %v exits in logoutQueue.",
+				session.User, session.AccessToken)
+			clearSession = true
+		}
+	}
+
 	if clearSession {
 		p.ClearSessionCookie(rw, req)
+		// ignore if token not exist in queue.
+		lqMgr.Remove(session.AccessToken)
+		session = nil
 	}
 
 	if session == nil {
