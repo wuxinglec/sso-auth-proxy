@@ -249,10 +249,10 @@ func (p *SsoProxy) AuthOnly(rw http.ResponseWriter, req *http.Request) {
 			clog.Error(err)
 			p.ErrorPage(rw, http.StatusUnauthorized, err.Error())
 		} else {
-			clog.Infof("user '%v' logged in, email: %v, token: %v", user.UserInfo.UserID, user.UserInfo.Email, user.UserInfo.Token)
+			clog.Infof("user '%v' logged in, email: %v, token: %v", user.UserInfo.UserAccount, user.UserInfo.Email, user.UserInfo.Token)
 
-			// DO NOT add email, otherwise decoding session will get invalid userID.
-			session := &SessionState{User: user.UserInfo.UserID, AccessToken: user.UserInfo.Token}
+			// DO NOT add email, otherwise decoding session will get invalid userAccount.
+			session := &SessionState{User: user.UserInfo.UserAccount, AccessToken: user.UserInfo.Token}
 			p.SaveSession(rw, req, session)
 
 			// redirectURI := fmt.Sprintf(p.redirectURI, user.UserInfo.UserAccount)
