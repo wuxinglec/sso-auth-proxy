@@ -415,6 +415,12 @@ func (p *SsoProxy) Redeem(token string) (u *User, err error) {
 		user = nil
 		err = errors.New("authentication failed.")
 	}
+
+	lowercaseUser := strings.ToLower(user.UserInfo.UserAccount)
+	if user.UserInfo.UserAccount != lowercaseUser {
+		clog.Warnf("lowercase(%v)=>%v", user.UserInfo.UserAccount, lowercaseUser)
+	}
+	user.UserInfo.UserAccount = lowercaseUser
 	return user, err
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"sync"
+	"time"
 
 	"github.com/zonesan/clog"
 )
@@ -23,7 +24,9 @@ type queueInfo struct {
 
 func NewLogoutQueue() LogoutQueueManager {
 	clog.Debug("a new logout queue inited...")
-	return &LogoutQueue{m: map[string]queueInfo{}}
+	lq := &LogoutQueue{m: map[string]queueInfo{}}
+	go lq.Update()
+	return lq
 }
 
 func (lq *LogoutQueue) Add(token string) error {
@@ -47,6 +50,21 @@ func (lq *LogoutQueue) Remove(token string) error {
 	}
 
 	return nil
+}
+
+func (lq *LogoutQueue) Update() {
+	clog.Info("session update routinue inited.")
+	for {
+		time.Sleep(time.Minute * 3)
+		for token, queue := range lq.m {
+			if queue.cleard == true {
+				lq.Lock()
+				delete(lq.m, token)
+				lq.Unlock()
+			}
+			clog.Infof("token %v removed from queue.", token)
+		}
+	}
 }
 
 func (lq *LogoutQueue) IsExist(token string) bool {
