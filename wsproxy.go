@@ -10,10 +10,10 @@ import (
 	"strings"
 )
 
-// ReverseProxy is a WebSocket reverse proxy. It will not work with a regular
+// WsReverseProxy is a WebSocket reverse proxy. It will not work with a regular
 // HTTP request, so it is the caller's responsiblity to ensure the incoming
 // request is a WebSocket request.
-type wsReverseProxy struct {
+type WsReverseProxy struct {
 	// Director must be a function which modifies
 	// the request into a new request to be sent
 	// using Transport. Its response is then copied
@@ -55,7 +55,7 @@ func singleJoiningSlash(a, b string) string {
 // url has the path '/foo' and the incoming request '/bar', the request path
 // will be updated to '/foo/bar' before forwarding.
 // Scheme should specify if 'ws' or 'wss' should be used.
-func NewSingleHostWsReverseProxy(target *url.URL) *wsReverseProxy {
+func NewSingleHostWsReverseProxy(target *url.URL) *WsReverseProxy {
 	targetQuery := target.RawQuery
 	director := func(req *http.Request) {
 		req.URL.Scheme = target.Scheme
@@ -68,11 +68,11 @@ func NewSingleHostWsReverseProxy(target *url.URL) *wsReverseProxy {
 			req.URL.RawQuery = targetQuery + "&" + req.URL.RawQuery
 		}
 	}
-	return &wsReverseProxy{Director: director}
+	return &WsReverseProxy{Director: director}
 }
 
 // Function to implement the http.Handler interface.
-func (p *wsReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (p *WsReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logFunc := log.Printf
 	if p.ErrorLog != nil {
 		logFunc = p.ErrorLog.Printf

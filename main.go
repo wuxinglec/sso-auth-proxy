@@ -56,7 +56,7 @@ func main() {
 }
 
 func init() {
-	clog.Info("starting sso-proxy, VERSION:", Version)
+	clog.Info("starting sso-proxy, VERSION:", version)
 
 	loginBaseURL = makeAddrFromEnv("SSO_LOGIN_BASE_URL")
 	logoutBaseURL = makeAddrFromEnv("SSO_LOGOUT_BASE_URL")

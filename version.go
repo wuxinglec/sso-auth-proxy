@@ -1,3 +1,3 @@
 package main
 
-var Version string = "unknown" // Set at compile time
+var version = "unknown" // Set at compile time

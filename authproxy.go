@@ -18,6 +18,7 @@ import (
 	"github.com/zonesan/clog"
 )
 
+// UpstreamProxy struct
 type UpstreamProxy struct {
 	handler   http.Handler
 	wsHandler http.Handler
@@ -59,7 +60,7 @@ func NewUpstreamProxy(target string) *UpstreamProxy {
 		}
 	}
 
-	var wsProxy *wsReverseProxy = nil
+	var wsProxy *WsReverseProxy
 	wsScheme := "ws" + strings.TrimPrefix(upstream.Scheme, "http")
 	wsURL := &url.URL{Scheme: wsScheme, Host: upstream.Host}
 	wsProxy = NewSingleHostWsReverseProxy(wsURL)
@@ -413,7 +414,7 @@ func (p *SsoProxy) Redeem(token string) (u *User, err error) {
 	}
 	if user.Result == "fail" {
 		user = nil
-		err = errors.New("authentication failed.")
+		err = errors.New("authentication failed")
 	}
 
 	lowercaseUser := strings.ToLower(user.UserInfo.UserAccount)
@@ -444,7 +445,7 @@ func getRemoteAddr(req *http.Request) (s string) {
 	return
 }
 
-// RefreshSessionIfNeeded
+// RefreshSessionIfNeeded not implentment yet.
 func (p *SsoProxy) RefreshSessionIfNeeded(s *SessionState) (bool, error) {
 	return false, nil
 }
@@ -531,6 +532,10 @@ func (p *SsoProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int {
 	// clog.Debugf("saveSession: %v, clearSession: %v, revalidated: %v", saveSession, clearSession, revalidated)
 	clog.Debug("user:", session.User)
 	req.Header["X-Forwarded-User"] = []string{session.User}
+
+	if session.AccessToken != "" {
+		req.Header["X-Forwarded-Access-Token"] = []string{session.AccessToken}
+	}
 	if session.Email != "" {
 		req.Header["X-Forwarded-Email"] = []string{session.Email}
 	}

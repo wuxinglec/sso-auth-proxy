@@ -20,7 +20,7 @@ vendor:
 clean:
 	rm -rf bin
 
-bin/%: LDFLAGS=-X main.Version=$(shell $(CURDIR)/git-version.sh)
+bin/%: LDFLAGS=-X main.version=$(shell $(CURDIR)/git-version.sh)
 bin/%: $(GOFILES)
 	mkdir -p $(dir $@)
 	GOOS=$(word 1, $(subst /, ,$*)) GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $@ 
