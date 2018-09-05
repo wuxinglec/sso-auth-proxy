@@ -19,7 +19,8 @@ type LogoutQueue struct {
 }
 
 type queueInfo struct {
-	cleard bool
+	cleard   bool
+	logoutAt time.Time
 }
 
 func NewLogoutQueue() LogoutQueueManager {
@@ -32,7 +33,7 @@ func NewLogoutQueue() LogoutQueueManager {
 func (lq *LogoutQueue) Add(token string) error {
 	clog.Debug("add new token to queue.", token)
 	lq.Lock()
-	lq.m[token] = queueInfo{}
+	lq.m[token] = queueInfo{logoutAt: time.Now()}
 	lq.Unlock()
 	return nil
 }
@@ -54,15 +55,21 @@ func (lq *LogoutQueue) Remove(token string) error {
 
 func (lq *LogoutQueue) Update() {
 	clog.Info("session update routinue inited.")
+
 	for {
 		time.Sleep(time.Minute * 3)
 		for token, queue := range lq.m {
-			if queue.cleard == true {
+			if queue.cleard == true || func() bool {
+				now := time.Now()
+				diff := now.Sub(queue.logoutAt)
+				// time up?
+				return diff.Hours() >= 24
+			}() {
 				lq.Lock()
 				delete(lq.m, token)
 				lq.Unlock()
+				clog.Infof("token %v removed from queue.", token)
 			}
-			clog.Infof("token %v removed from queue.", token)
 		}
 	}
 }
