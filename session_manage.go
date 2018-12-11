@@ -63,7 +63,7 @@ func (lq *LogoutQueue) Update() {
 				now := time.Now()
 				diff := now.Sub(queue.logoutAt)
 				// time up?
-				return diff.Hours() >= 24
+				return diff.Hours() >= 2
 			}() {
 				lq.Lock()
 				delete(lq.m, token)

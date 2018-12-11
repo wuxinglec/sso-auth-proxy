@@ -139,7 +139,7 @@ func NewSsoProxy(upstream string) *SsoProxy {
 		redirectURI:   rediredcturi,
 		CookieName:    "_datafoundry_sso_session",
 		CookieSeed:    CookieSecret,
-		CookieExpire:  time.Minute * 60 * 24,
+		CookieExpire:  time.Minute * 60 * 2,
 		CookieCipher:  cipher,
 		CookieRefresh: time.Duration(0),
 		Validator:     func(string) bool { return true },
